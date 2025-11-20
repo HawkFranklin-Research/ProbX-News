@@ -1,0 +1,8 @@
+{
+  "name": "TruthGuard AI",
+  "description": "An advanced AI agent that uses multi-step reasoning and web search to verify news and identify fake content.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
