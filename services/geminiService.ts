@@ -1,5 +1,5 @@
-import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { AnalysisResult, InputType, Verdict } from "../types";
+import { GoogleGenAI } from "@google/genai";
+import { AnalysisResult, InputType, Verdict, ModelId } from "../types";
 
 const getClient = () => {
   const apiKey = process.env.API_KEY;
@@ -24,53 +24,13 @@ const fileToGenerativePart = async (file: File): Promise<string> => {
   });
 };
 
-// Define the response schema for structured output
-const analysisSchema: Schema = {
-  type: Type.OBJECT,
-  properties: {
-    verdict: {
-      type: Type.STRING,
-      enum: [Verdict.REAL, Verdict.FAKE, Verdict.INCONCLUSIVE, Verdict.SATIRE],
-      description: "The final classification of the content."
-    },
-    confidenceScore: {
-      type: Type.NUMBER,
-      description: "Confidence level from 0 to 100."
-    },
-    summary: {
-      type: Type.STRING,
-      description: "A punchy, one-sentence headline summary of the finding."
-    },
-    detailedMarkdown: {
-      type: Type.STRING,
-      description: "A comprehensive report in Markdown format explaining the reasoning, facts checked, and analysis."
-    },
-    agentLogs: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          action: { type: Type.STRING, description: "What the agent did (e.g., 'Checked X feed', 'Reverse Image Search')." },
-          findings: { type: Type.STRING, description: "What was found during this step." },
-          source: { type: Type.STRING, description: "Domain or source name if applicable." }
-        }
-      },
-      description: "A simulated log of the agent's research steps to fill the 'Excel sheet' requirement."
-    }
-  },
-  required: ["verdict", "confidenceScore", "summary", "detailedMarkdown", "agentLogs"]
-};
-
 export const analyzeContent = async (
   input: string | File,
-  type: InputType
+  type: InputType,
+  modelId: ModelId = 'gemini-3-pro-preview'
 ): Promise<AnalysisResult> => {
   const ai = getClient();
-  
-  // We use gemini-3-pro-preview for deep reasoning and thinking capability
-  // This allows the model to "plan" its fact-checking route
-  const modelId = "gemini-3-pro-preview";
-  
+
   let parts: any[] = [];
   let promptPrefix = "";
 
@@ -89,7 +49,7 @@ export const analyzeContent = async (
   }
 
   const systemInstruction = `
-    You are TruthGuard, an elite Fact-Checking AI Agent. 
+    You are ProbX News, an elite Fact-Checking AI Agent. 
     Your mission is to identify Fake News, misinformation, and deepfakes.
     
     PROCESS:
@@ -100,9 +60,18 @@ export const analyzeContent = async (
     5. Determine a Verdict (REAL, FAKE, SATIRE, INCONCLUSIVE).
     
     OUTPUT:
-    Return a JSON object adhering to the schema. 
+    Return a valid JSON object adhering to the schema. 
     The 'agentLogs' array should look like rows in a research spreadsheet, detailing each specific check you performed (e.g., "Cross-referenced date with BBC", "Checked viral hashtags on X").
+    Do NOT include markdown code blocks. Return raw JSON.
   `;
+
+  // Adjust thinking budget based on model capability
+  let thinkingBudget = 8192;
+  if (modelId === 'gemini-3-pro-preview') {
+    thinkingBudget = 32768; // Max reasoning budget for Pro
+  } else {
+    thinkingBudget = 8192; // Balanced for Flash variants
+  }
 
   const response = await ai.models.generateContent({
     model: modelId,
@@ -116,17 +85,19 @@ export const analyzeContent = async (
     config: {
       systemInstruction: systemInstruction,
       tools: [{ googleSearch: {} }], // Enable Grounding
-      responseMimeType: "application/json",
-      responseSchema: analysisSchema,
-      thinkingConfig: { thinkingBudget: 2048 } // Enable Thinking for reasoning
+      // responseMimeType/responseSchema not allowed with googleSearch tool
+      thinkingConfig: { thinkingBudget: thinkingBudget }
     }
   });
 
-  const jsonText = response.text;
+  let jsonText = response.text;
   
   if (!jsonText) {
     throw new Error("No response received from AI agent.");
   }
+
+  // Cleanup markdown fences if present
+  jsonText = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
 
   let parsedData;
   try {

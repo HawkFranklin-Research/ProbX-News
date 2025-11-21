@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/imgs/probx_logo_1_1.jpeg" alt="ProbX News Logo" width="420" />
+  <img src="assets/imgs/logo_only.png" alt="ProbX News Logo" width="360" />
 </div>
 
 # ProbX News

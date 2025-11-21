@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { InputType } from '../types';
+import { InputType, ModelId } from '../types';
 
 interface InputSectionProps {
-  onAnalyze: (input: string | File, type: InputType) => void;
+  onAnalyze: (input: string | File, type: InputType, modelId: ModelId) => void;
 }
 
 export const InputSection: React.FC<InputSectionProps> = ({ onAnalyze }) => {
@@ -10,6 +10,13 @@ export const InputSection: React.FC<InputSectionProps> = ({ onAnalyze }) => {
   const [textInput, setTextInput] = useState('');
   const [fileInput, setFileInput] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  
+  // Model selection state
+  const [selectedModel, setSelectedModel] = useState<ModelId>('gemini-3-pro-preview');
+  const [pendingModel, setPendingModel] = useState<ModelId>('gemini-3-pro-preview');
+  const [showSettings, setShowSettings] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -24,12 +31,18 @@ export const InputSection: React.FC<InputSectionProps> = ({ onAnalyze }) => {
     }
   };
 
+  const handleSaveSettings = () => {
+    setSelectedModel(pendingModel);
+    setIsSaved(true);
+    setTimeout(() => setIsSaved(false), 2000);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputType === InputType.TEXT && textInput.trim()) {
-      onAnalyze(textInput, InputType.TEXT);
+      onAnalyze(textInput, InputType.TEXT, selectedModel);
     } else if (inputType === InputType.IMAGE && fileInput) {
-      onAnalyze(fileInput, InputType.IMAGE);
+      onAnalyze(fileInput, InputType.IMAGE, selectedModel);
     }
   };
 
@@ -135,6 +148,91 @@ export const InputSection: React.FC<InputSectionProps> = ({ onAnalyze }) => {
             </svg>
           </button>
         </form>
+
+        {/* Settings Accordion */}
+        <div className="mt-8 pt-4 border-t border-slate-100">
+          <button 
+            type="button" 
+            onClick={() => setShowSettings(!showSettings)}
+            className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider hover:text-blue-600 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={`w-4 h-4 transition-transform ${showSettings ? 'rotate-180' : ''}`}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+            </svg>
+            Model Configuration
+          </button>
+          
+          {showSettings && (
+            <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200 animate-fadeIn">
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-sm font-medium text-slate-700">Select Intelligence Level</label>
+                {isSaved && (
+                   <span className="text-green-600 text-xs font-bold flex items-center gap-1 animate-pulse">
+                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-3 h-3">
+                       <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                     </svg>
+                     Settings Saved!
+                   </span>
+                )}
+              </div>
+              
+              <div className="grid grid-cols-1 gap-2 mb-4">
+                <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-all ${pendingModel === 'gemini-3-pro-preview' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:bg-white'}`}>
+                  <input 
+                    type="radio" 
+                    name="model" 
+                    value="gemini-3-pro-preview"
+                    checked={pendingModel === 'gemini-3-pro-preview'}
+                    onChange={() => setPendingModel('gemini-3-pro-preview')}
+                    className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                  />
+                  <div className="ml-3">
+                    <span className="block text-sm font-bold text-slate-900">Gemini 2.5 Pro (Recommended)</span>
+                    <span className="block text-xs text-slate-500">High reasoning, complex fake news analysis, max thinking budget (32k).</span>
+                  </div>
+                </label>
+
+                <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-all ${pendingModel === 'gemini-flash-latest' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:bg-white'}`}>
+                  <input 
+                    type="radio" 
+                    name="model" 
+                    value="gemini-flash-latest"
+                    checked={pendingModel === 'gemini-flash-latest'}
+                    onChange={() => setPendingModel('gemini-flash-latest')}
+                    className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                  />
+                  <div className="ml-3">
+                    <span className="block text-sm font-bold text-slate-900">Gemini 2.5 Flash</span>
+                    <span className="block text-xs text-slate-500">Faster responses, good for quick fact checks.</span>
+                  </div>
+                </label>
+
+                <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-all ${pendingModel === 'gemini-flash-lite-latest' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:bg-white'}`}>
+                  <input 
+                    type="radio" 
+                    name="model" 
+                    value="gemini-flash-lite-latest"
+                    checked={pendingModel === 'gemini-flash-lite-latest'}
+                    onChange={() => setPendingModel('gemini-flash-lite-latest')}
+                    className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                  />
+                  <div className="ml-3">
+                    <span className="block text-sm font-bold text-slate-900">Gemini 2.5 Flash-Lite</span>
+                    <span className="block text-xs text-slate-500">Fastest, most cost efficient, simple verification.</span>
+                  </div>
+                </label>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSaveSettings}
+                className="w-full py-2 bg-slate-800 text-white text-sm font-bold rounded-lg hover:bg-slate-900 transition-colors shadow-sm"
+              >
+                Save Configuration
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -30,3 +30,16 @@ export interface AnalysisResult {
   sources: Source[];
   agentLogs: AgentLogEntry[];
 }
+
+export type ModelId = 'gemini-3-pro-preview' | 'gemini-flash-latest' | 'gemini-flash-lite-latest';
+
+declare global {
+  interface AIStudio {
+    hasSelectedApiKey: () => Promise<boolean>;
+    openSelectKey: () => Promise<void>;
+  }
+
+  interface Window {
+    aistudio?: AIStudio;
+  }
+}
